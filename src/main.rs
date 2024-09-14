@@ -49,7 +49,7 @@ lazy_static::lazy_static! {
     ).unwrap();
     static ref TOTAL_GAS_CONSUMED: Counter = register_counter!(
         "kamstrup_162jxc_p1_total_gas_delivered_m3",
-        "Total gas delivered in 1 m3 resolution (0-1:24.3.0)"
+        "Total gas delivered in m3 (0-1:24.3.0)"
     ).unwrap();
 }
 
