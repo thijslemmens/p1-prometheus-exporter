@@ -94,11 +94,11 @@ async fn read_serial_port(serial_port_path: String) {
             println!("TOTAL_ENERGY_PRODUCED: {}, meter: {}", curr, meter);
             TOTAL_ENERGY_PRODUCED.with_label_values(&[meter]).inc_by(curr - TOTAL_ENERGY_PRODUCED.get_metric_with_label_values(&[meter]).unwrap().get())
         } else if line.starts_with("1-0:1.7.0") {
-            let curr = line[10..line.len() - 5].parse::<f64>().unwrap() * 1000.0;
+            let curr = line[10..line.len() - 4].parse::<f64>().unwrap() * 1000.0;
             println!("CURRENT_POWER_CONSUMED: {}", curr);
             CURRENT_POWER_CONSUMED.set(curr);
         } else if line.starts_with("1-0:2.7.0") {
-            let curr = line[10..line.len() - 5].parse::<f64>().unwrap() * 1000.0;
+            let curr = line[10..line.len() - 4].parse::<f64>().unwrap() * 1000.0;
             println!("CURRENT_POWER_PRODUCED: {}", curr);
             CURRENT_POWER_PRODUCED.set(curr);
         }
