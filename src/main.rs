@@ -19,6 +19,10 @@ struct Args {
     /// Port the Prometheus exporter should listen on
     #[arg(short, long, default_value_t = 9292)]
     port: u16,
+
+    /// Serial port device
+    #[arg(short, long, default_value_t = (& "/dev/ttyUSB0").to_string())]
+    serial_port: String,
 }
 
 
@@ -50,9 +54,9 @@ lazy_static::lazy_static! {
 }
 
 
-async fn read_serial_port() {
+async fn read_serial_port(serial_port_path: String) {
     // Open the serial port (update with your port and baud rate)
-    let serial_port = tokio_serial::new("/dev/ttyUSB0", 9600)
+    let serial_port = tokio_serial::new(serial_port_path, 9600)
         .data_bits(DataBits::Seven)
         .stop_bits(StopBits::One)
         .parity(Parity::Even)
@@ -105,7 +109,7 @@ async fn read_serial_port() {
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let args: Args = Args::parse();
 
-    tokio::spawn(read_serial_port());
+    tokio::spawn(read_serial_port(args.serial_port));
 
     // Define the address and create the server
     let addr = SocketAddr::from(([0, 0, 0, 0], args.port));
