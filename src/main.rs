@@ -8,7 +8,7 @@ use hyper::server::conn::http1;
 use hyper::service::service_fn;
 use hyper_util::rt::TokioIo;
 use log::info;
-use prometheus::{Counter, Encoder, Gauge, register_counter, register_gauge, TextEncoder, register_counter_vec, CounterVec};
+use prometheus::{Counter, Encoder, IntCounterVec, IntGauge, register_counter, register_int_counter_vec, register_int_gauge, TextEncoder};
 use tokio::io::{AsyncBufReadExt, BufReader};
 use tokio::net::TcpListener;
 use tokio_serial::{DataBits, Parity, SerialPortBuilderExt, StopBits};
@@ -28,21 +28,21 @@ struct Args {
 
 // Initialize a counter metric
 lazy_static::lazy_static! {
-    static ref CURRENT_POWER_CONSUMED: Gauge = register_gauge!(
+    static ref CURRENT_POWER_CONSUMED: IntGauge = register_int_gauge!(
         "kamstrup_162jxc_p1_actual_power_delivered_watts",
         "Actual electricity power delivered (+P) in 1 Watt resolution (1-0:1.7.0)"
     ).unwrap();
-    static ref CURRENT_POWER_PRODUCED: Gauge = register_gauge!(
+    static ref CURRENT_POWER_PRODUCED: IntGauge = register_int_gauge!(
         "kamstrup_162jxc_p1_actual_power_received_watts",
         "Actual electricity power received (-P) in 1 Watt resolution (1-0:2.7.0)"
     ).unwrap();
 
-    static ref TOTAL_ENERGY_CONSUMED: CounterVec = register_counter_vec!(
+    static ref TOTAL_ENERGY_CONSUMED: IntCounterVec = register_int_counter_vec!(
         "kamstrup_162jxc_p1_total_energy_delivered_watthours",
         "Total electricity energy delivered (+P) in 1 Watthour resolution (1-0:1.8.1 / 1-0:1.8.2)",
         &["meter"]
     ).unwrap();
-    static ref TOTAL_ENERGY_PRODUCED: CounterVec = register_counter_vec!(
+    static ref TOTAL_ENERGY_PRODUCED: IntCounterVec = register_int_counter_vec!(
         "kamstrup_162jxc_p1_total_energy_received_watthours",
         "Total electricity energy received (-P) in 1 Watthour resolution (1-0:2.8.1 / 1-0:2.8.2)",
         &["meter"]
@@ -74,33 +74,33 @@ async fn read_serial_port(serial_port_path: String) {
             println!("TOTAL_GAS_CONSUMED: {}", curr);
             TOTAL_GAS_CONSUMED.inc_by(curr - TOTAL_GAS_CONSUMED.get())
         } else if line.starts_with("1-0:1.8.1") {
-            let curr = line[10..line.len() - 5].parse::<f64>().unwrap() * 1000.0;
+            let curr = (line[10..line.len() - 5].parse::<f64>().unwrap() * 1000.0) as u64;
             let meter = "1";
             println!("TOTAL_ENERGY_CONSUMED: {}, meter: {}", curr, meter);
             TOTAL_ENERGY_CONSUMED.with_label_values(&[meter]).inc_by(curr - TOTAL_ENERGY_CONSUMED.get_metric_with_label_values(&[meter]).unwrap().get())
         } else if line.starts_with("1-0:1.8.2") {
-            let curr = line[10..line.len() - 5].parse::<f64>().unwrap() * 1000.0;
+            let curr = (line[10..line.len() - 5].parse::<f64>().unwrap() * 1000.0) as u64;
             let meter = "2";
             println!("TOTAL_ENERGY_CONSUMED: {}, meter: {}", curr, meter);
             TOTAL_ENERGY_CONSUMED.with_label_values(&[meter]).inc_by(curr - TOTAL_ENERGY_CONSUMED.get_metric_with_label_values(&[meter]).unwrap().get())
         } else if line.starts_with("1-0:2.8.1") {
-            let curr = line[10..line.len() - 5].parse::<f64>().unwrap() * 1000.0;
+            let curr = (line[10..line.len() - 5].parse::<f64>().unwrap() * 1000.0) as u64;
             let meter = "1";
             println!("TOTAL_ENERGY_PRODUCED: {}, meter: {}", curr, meter);
             TOTAL_ENERGY_PRODUCED.with_label_values(&[meter]).inc_by(curr - TOTAL_ENERGY_PRODUCED.get_metric_with_label_values(&[meter]).unwrap().get())
         } else if line.starts_with("1-0:2.8.2") {
-            let curr = line[10..line.len() - 5].parse::<f64>().unwrap() * 1000.0;
+            let curr = (line[10..line.len() - 5].parse::<f64>().unwrap() * 1000.0) as u64;
             let meter = "2";
             println!("TOTAL_ENERGY_PRODUCED: {}, meter: {}", curr, meter);
             TOTAL_ENERGY_PRODUCED.with_label_values(&[meter]).inc_by(curr - TOTAL_ENERGY_PRODUCED.get_metric_with_label_values(&[meter]).unwrap().get())
         } else if line.starts_with("1-0:1.7.0") {
             let curr = line[10..line.len() - 4].parse::<f64>().unwrap() * 1000.0;
             println!("CURRENT_POWER_CONSUMED: {}", curr);
-            CURRENT_POWER_CONSUMED.set(curr);
+            CURRENT_POWER_CONSUMED.set(curr as i64);
         } else if line.starts_with("1-0:2.7.0") {
             let curr = line[10..line.len() - 4].parse::<f64>().unwrap() * 1000.0;
             println!("CURRENT_POWER_PRODUCED: {}", curr);
-            CURRENT_POWER_PRODUCED.set(curr);
+            CURRENT_POWER_PRODUCED.set(curr as i64);
         }
     }
 }
