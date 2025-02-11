@@ -1,0 +1,10 @@
+[Unit]
+Description=Kamstrup 162JXC P1 Prometheus exporter
+After=time-sync.target
+
+[Service]
+ExecStart=/usr/bin/kamstrup-162jxc-p1-prometheus-exporter-rs --port 9292 --serial-port /dev/ttyUSB0
+Type=simple
+
+[Install]
+WantedBy=multi-user.target

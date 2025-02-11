@@ -2,6 +2,9 @@
 name = "kamstrup-162jxc-p1-prometheus-exporter-rs"
 version = "0.1.0"
 edition = "2021"
+description = "A Prometheus exporter for Kamstrup 162JXC smart electricity meters"
+license = "MIT"
+authors = ["Christian Luijten <christian@luijten.org>"]
 
 [dependencies]
 tokio-serial = "5.4.4"
@@ -14,3 +17,11 @@ hyper-util = { version = "0.1", features = ["full"] }
 http-body-util = "0.1"
 log = "0.4.22"
 clap = { version = "4.5.17", features = ["derive"] }
+
+[package.metadata.deb]
+copyright = "2024, Christian Luijten <christian@luijten.org>"
+extended-description-file = "debian/extended-description"
+maintainer = "Christian Luijten <christian@luijten.org>"
+maintainer-scripts = "debian/"
+systemd-units = { enable = true }
+

@@ -1,0 +1,4 @@
+This is a Prometheus exporter for Kamstrup 162JXC smart meters in the
+Netherlands. It also retrieves the gas meter readings.
+
+Requires a P1 USB cable connected to your computer.

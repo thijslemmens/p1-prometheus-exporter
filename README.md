@@ -12,6 +12,15 @@ used [this one](https://webshop.cedel.nl/nl/Slimme-meter-kabel-P1-naar-USB).
 1. Install Rust: `curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh`
 2. Run: `cargo run` or build for release `cargo build --release`
 
+### Debian package
+
+To build a Debian package:
+
+```
+$ cargo install cargo-deb
+$ cargo deb
+```
+
 ## Implementation Details
 
 The P1 port carries is a pretty simple protocol, called DSMR (Dutch Smart Meter Requirements). On each line it provides
