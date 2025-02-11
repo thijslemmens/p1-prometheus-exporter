@@ -1,0 +1,10 @@
+image: debian:bookworm
+
+build deb:
+  stage: build
+  script:
+    - apt update && apt install build-essential curl git
+    - curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+    - . $HOME/.cargo/env
+    - cargo install cargo-deb
+    - cargo deb -v
