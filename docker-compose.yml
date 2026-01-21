@@ -10,6 +10,11 @@ services:
     devices:
       - /dev/ttyUSB0:/dev/ttyUSB0
 
+    # Add dialout group for serial port access (GID 20 on most systems)
+    # You can find your dialout GID with: getent group dialout
+    group_add:
+      - dialout
+
     # Expose the metrics port
     ports:
       - "9292:9292"

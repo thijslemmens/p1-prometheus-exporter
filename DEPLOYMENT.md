@@ -215,17 +215,22 @@ By default, GitHub Container Registry images are private. To make them public:
 
 ### Serial Port Issues
 
+**See [TROUBLESHOOTING.md](TROUBLESHOOTING.md) for detailed serial port permission solutions.**
+
+Quick fixes:
 - [ ] Ensure the device exists: `ls -l /dev/ttyUSB0`
 - [ ] Check device permissions: `sudo chmod 666 /dev/ttyUSB0`
 - [ ] Or add user to dialout group: `sudo usermod -a -G dialout $USER`
+- [ ] Verify docker-compose.yml includes `group_add: dialout`
 - [ ] Verify the correct DSMR mode (new vs old)
 
 ## Support
 
+- [ ] Check [TROUBLESHOOTING.md](TROUBLESHOOTING.md) for common issues and solutions
 - [ ] Check existing issues in the repository
 - [ ] Read `.github/workflows/README.md` for CI/CD details
 - [ ] Review GitHub Actions documentation
-- [ ] Check Docker and serial port permissions on your system
+- [ ] Run the diagnostic script from TROUBLESHOOTING.md
 
 ## Checklist Complete! 🎉
 

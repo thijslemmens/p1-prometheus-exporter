@@ -325,9 +325,9 @@ mod tests {
 
     fn get_int_gauge_value(metric_name: &str) -> Option<i64> {
         for mf in gather() {
-            if mf.get_name() == metric_name && mf.get_field_type() == MetricType::GAUGE {
+            if mf.name() == metric_name && mf.get_field_type() == MetricType::GAUGE {
                 for m in mf.get_metric() {
-                    return Some(m.get_gauge().get_value() as i64);
+                    return Some(m.gauge.value.unwrap_or(0.0) as i64);
                 }
             }
         }
@@ -337,17 +337,17 @@ mod tests {
     fn get_int_counter_vec_value(metric_name: &str, label: (&str, &str)) -> Option<u64> {
         let (label_name, label_value) = label;
         'outer: for mf in gather() {
-            if mf.get_name() == metric_name && mf.get_field_type() == MetricType::COUNTER {
+            if mf.name() == metric_name && mf.get_field_type() == MetricType::COUNTER {
                 for m in mf.get_metric() {
                     let mut ok = false;
                     for l in m.get_label() {
-                        if l.get_name() == label_name && l.get_value() == label_value {
+                        if l.name.as_deref() == Some(label_name) && l.value.as_deref() == Some(label_value) {
                             ok = true;
                             break;
                         }
                     }
                     if ok {
-                        return Some(m.get_counter().get_value() as u64);
+                        return Some(m.counter.value.unwrap_or(0.0) as u64);
                     } else {
                         continue 'outer;
                     }
@@ -370,13 +370,13 @@ mod tests {
     fn parses_total_energy_consumed_tariff_1() {
         // Metric name from METRIC_CONFIG for obis "1-0:1.8.1"
         let metric_name = "p1_total_energy_delivered_watthours";
-        let before = get_int_counter_vec_value(metric_name, ("meter", "1")).unwrap_or(0);
+        let before = get_int_counter_vec_value(metric_name, ("tariff", "1")).unwrap_or(0);
 
         // From your sample: 006495.662 kWh -> 6_495_662 Wh
         process_p1_line("1-0:1.8.1(006495.662*kWh)").unwrap();
 
         let after =
-            get_int_counter_vec_value(metric_name, ("meter", "1")).expect("counter not found");
+            get_int_counter_vec_value(metric_name, ("tariff", "1")).expect("counter not found");
         assert_eq!(after - before, 6_495_662);
     }
 
@@ -388,9 +388,9 @@ mod tests {
         let before = {
             let mut val = 0.0;
             for mf in gather() {
-                if mf.get_name() == metric_name {
+                if mf.name() == metric_name {
                     for m in mf.get_metric() {
-                        val = m.get_counter().get_value();
+                        val = m.counter.value.unwrap_or(0.0);
                     }
                 }
             }
@@ -403,9 +403,9 @@ mod tests {
         let after = {
             let mut val = 0.0;
             for mf in gather() {
-                if mf.get_name() == metric_name {
+                if mf.name() == metric_name {
                     for m in mf.get_metric() {
-                        val = m.get_counter().get_value();
+                        val = m.counter.value.unwrap_or(0.0);
                     }
                 }
             }
@@ -413,6 +413,6 @@ mod tests {
         };
 
         // CounterDeltaF64 logic: from 0 to 5890.569
-        assert!((after - before - 5890.569).abs() < 0.0001);
+        assert!((after - before - 5890.569_f64).abs() < 0.0001);
     }
 }
