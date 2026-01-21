@@ -1,0 +1,28 @@
+# Example Prometheus configuration for scraping P1 exporter metrics
+
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+  external_labels:
+    monitor: 'p1-smart-meter'
+
+scrape_configs:
+  - job_name: 'p1-exporter'
+    static_configs:
+      - targets: ['p1-exporter:9292']
+        labels:
+          instance: 'smart-meter'
+          location: 'home'
+    
+    # Scrape interval - P1 meter updates every 10 seconds,
+    # so 15s is a reasonable scraping frequency
+    scrape_interval: 15s
+    scrape_timeout: 10s
+
+  # If running outside Docker, use localhost instead:
+  # - job_name: 'p1-exporter'
+  #   static_configs:
+  #     - targets: ['localhost:9292']
+  #       labels:
+  #         instance: 'smart-meter'
+  #         location: 'home'

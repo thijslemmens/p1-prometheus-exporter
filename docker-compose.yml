@@ -1,0 +1,79 @@
+version: "3.8"
+
+services:
+  p1-exporter:
+    image: ghcr.io/thijslemmens/p1-prometheus-exporter:latest
+    container_name: p1-prometheus-exporter
+    restart: unless-stopped
+
+    # Give access to the P1 serial device
+    devices:
+      - /dev/ttyUSB0:/dev/ttyUSB0
+
+    # Expose the metrics port
+    ports:
+      - "9292:9292"
+
+    # Command-line arguments
+    command:
+      - --serial-port
+      - /dev/ttyUSB0
+      - --port
+      - "9292"
+      # Uncomment for older DSMR 2.x/3.x meters:
+      # - --dsmr
+      # - old
+      # Uncomment for verbose logging:
+      # - --verbose
+
+    # Optional: Set environment variables
+    environment:
+      - RUST_LOG=info
+      # For debug logging, use:
+      # - RUST_LOG=debug
+
+    # Optional: Add health check
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "wget",
+          "--quiet",
+          "--tries=1",
+          "--spider",
+          "http://localhost:9292/metrics",
+        ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+  # Optional: Add Prometheus to scrape the metrics
+  # prometheus:
+  #   image: prom/prometheus:latest
+  #   container_name: prometheus
+  #   restart: unless-stopped
+  #   ports:
+  #     - "9090:9090"
+  #   volumes:
+  #     - ./prometheus.yml:/etc/prometheus/prometheus.yml
+  #     - prometheus-data:/prometheus
+  #   command:
+  #     - --config.file=/etc/prometheus/prometheus.yml
+  #     - --storage.tsdb.path=/prometheus
+
+  # Optional: Add Grafana for visualization
+  # grafana:
+  #   image: grafana/grafana:latest
+  #   container_name: grafana
+  #   restart: unless-stopped
+  #   ports:
+  #     - "3000:3000"
+  #   volumes:
+  #     - grafana-data:/var/lib/grafana
+  #   environment:
+  #     - GF_SECURITY_ADMIN_PASSWORD=admin
+
+# volumes:
+#   prometheus-data:
+#   grafana-data:

@@ -1,0 +1,34 @@
+# Rust build artifacts
+target/
+Cargo.lock
+
+# Git
+.git/
+.gitignore
+.github/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.zed/
+
+# Documentation
+README.md
+docs/
+*.md
+
+# CI/CD
+.gitlab-ci.yml
+
+# Debian packaging
+debian/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Keep only the binaries directory for Docker build
+!binaries/
