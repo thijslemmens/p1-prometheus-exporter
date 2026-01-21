@@ -4,9 +4,19 @@ This repository uses GitHub Actions to automatically build and publish multi-arc
 
 ## Workflow Overview
 
-The workflow consists of two main jobs:
+The workflow consists of three main jobs:
 
-### 1. Build Binaries (`build-binaries`)
+### 1. Run Tests (`test`)
+
+This job runs before any builds to ensure code quality:
+
+- **Unit Tests**: Runs all Rust tests with `cargo test --verbose`
+- **Linting**: Runs `cargo clippy` with warnings treated as errors
+- **Caching**: Uses GitHub Actions cache to speed up test runs
+
+The build jobs will only run if all tests and linting checks pass.
+
+### 2. Build Binaries (`build-binaries`)
 
 This job builds the Rust binary for two target architectures:
 
@@ -18,7 +28,7 @@ The binaries are statically linked using musl libc, which produces a standalone 
 **Why cargo-zigbuild?**
 Cross-compiling Rust to ARM64 can be tricky. `cargo-zigbuild` uses the Zig compiler as a linker, which makes cross-compilation much simpler and more reliable without needing a full cross-compilation toolchain.
 
-### 2. Build and Push Docker Image (`build-and-push-image`)
+### 3. Build and Push Docker Image (`build-and-push-image`)
 
 This job:
 1. Downloads the pre-built binaries from the previous job
@@ -64,6 +74,16 @@ To use this workflow in your repository:
 ## Local Testing
 
 To test the workflow locally before pushing:
+
+### Run tests locally:
+
+```bash
+# Run all tests
+cargo test --verbose
+
+# Run clippy linting
+cargo clippy -- -D warnings
+```
 
 ### Build binaries locally:
 
