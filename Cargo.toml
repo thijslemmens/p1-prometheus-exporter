@@ -16,6 +16,7 @@ hyper = "1.4.1"
 hyper-util = { version = "0.1", features = ["full"] }
 http-body-util = "0.1"
 log = "0.4.22"
+env_logger = "0.10"
 clap = { version = "4.5.17", features = ["derive"] }
 
 [package.metadata.deb]
