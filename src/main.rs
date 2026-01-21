@@ -8,7 +8,8 @@ use hyper::server::conn::http1;
 use hyper::service::service_fn;
 use hyper_util::rt::TokioIo;
 use log::info;
-use prometheus::{Counter, Encoder, IntCounterVec, IntGauge, register_counter, register_int_counter_vec, register_int_gauge, TextEncoder};
+use p1_prometheus_exporter_rs::process_p1_line;
+use prometheus::{Encoder, TextEncoder};
 use tokio::io::{AsyncBufReadExt, BufReader};
 use tokio::net::TcpListener;
 use tokio_serial::{DataBits, Parity, SerialPortBuilderExt, StopBits};
@@ -25,122 +26,105 @@ struct Args {
     serial_port: String,
 }
 
-
-// Initialize a counter metric
-lazy_static::lazy_static! {
-    static ref CURRENT_POWER_CONSUMED: IntGauge = register_int_gauge!(
-        "kamstrup_162jxc_p1_actual_power_delivered_watts",
-        "Actual electricity power delivered (+P) in 1 Watt resolution (1-0:1.7.0)"
-    ).unwrap();
-    static ref CURRENT_POWER_PRODUCED: IntGauge = register_int_gauge!(
-        "kamstrup_162jxc_p1_actual_power_received_watts",
-        "Actual electricity power received (-P) in 1 Watt resolution (1-0:2.7.0)"
-    ).unwrap();
-
-    static ref TOTAL_ENERGY_CONSUMED: IntCounterVec = register_int_counter_vec!(
-        "kamstrup_162jxc_p1_total_energy_delivered_watthours",
-        "Total electricity energy delivered (+P) in 1 Watthour resolution (1-0:1.8.1 / 1-0:1.8.2)",
-        &["meter"]
-    ).unwrap();
-    static ref TOTAL_ENERGY_PRODUCED: IntCounterVec = register_int_counter_vec!(
-        "kamstrup_162jxc_p1_total_energy_received_watthours",
-        "Total electricity energy received (-P) in 1 Watthour resolution (1-0:2.8.1 / 1-0:2.8.2)",
-        &["meter"]
-    ).unwrap();
-    static ref TOTAL_GAS_CONSUMED: Counter = register_counter!(
-        "kamstrup_162jxc_p1_total_gas_delivered_m3",
-        "Total gas delivered in m3 (0-1:24.3.0)"
-    ).unwrap();
-}
-
-
-async fn read_serial_port(serial_port_path: String) {
-    // Open the serial port (update with your port and baud rate)
-    let serial_port = tokio_serial::new(serial_port_path, 9600)
-        .data_bits(DataBits::Seven)
+async fn read_serial_port(
+    serial_port_path: String,
+) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+    let serial_port = tokio_serial::new(serial_port_path.clone(), 115200)
+        .data_bits(DataBits::Eight)
         .stop_bits(StopBits::One)
-        .parity(Parity::Even)
-        .open_native_async().unwrap();
+        .parity(Parity::None)
+        .open_native_async()
+        .map_err(|e| {
+            eprintln!("Failed to open serial port {}: {}", serial_port_path, e);
+            e
+        })?;
 
-    // Buffer the serial stream for efficient reading
-    let reader = BufReader::new(serial_port);
+    let reader = BufReader::with_capacity(32 * 1024, serial_port);
     let mut lines = reader.lines();
 
-    while let Some(line) = lines.next_line().await.unwrap() {
+    while let Some(line) = lines.next_line().await? {
         println!("Received message: {}", line);
+        if let Err(e) = process_p1_line(&line) {
+            eprintln!("Error processing P1 line '{}': {}", line, e);
+        }
+    }
 
-        if line.starts_with("(") {
-            let curr = line[1..line.len() - 1].parse::<f64>().unwrap();
-            println!("TOTAL_GAS_CONSUMED: {}", curr);
-            TOTAL_GAS_CONSUMED.inc_by(curr - TOTAL_GAS_CONSUMED.get())
-        } else if line.starts_with("1-0:1.8.1") {
-            let curr = (line[10..line.len() - 5].parse::<f64>().unwrap() * 1000.0) as u64;
-            let meter = "1";
-            println!("TOTAL_ENERGY_CONSUMED: {}, meter: {}", curr, meter);
-            TOTAL_ENERGY_CONSUMED.with_label_values(&[meter]).inc_by(curr - TOTAL_ENERGY_CONSUMED.get_metric_with_label_values(&[meter]).unwrap().get())
-        } else if line.starts_with("1-0:1.8.2") {
-            let curr = (line[10..line.len() - 5].parse::<f64>().unwrap() * 1000.0) as u64;
-            let meter = "2";
-            println!("TOTAL_ENERGY_CONSUMED: {}, meter: {}", curr, meter);
-            TOTAL_ENERGY_CONSUMED.with_label_values(&[meter]).inc_by(curr - TOTAL_ENERGY_CONSUMED.get_metric_with_label_values(&[meter]).unwrap().get())
-        } else if line.starts_with("1-0:2.8.1") {
-            let curr = (line[10..line.len() - 5].parse::<f64>().unwrap() * 1000.0) as u64;
-            let meter = "1";
-            println!("TOTAL_ENERGY_PRODUCED: {}, meter: {}", curr, meter);
-            TOTAL_ENERGY_PRODUCED.with_label_values(&[meter]).inc_by(curr - TOTAL_ENERGY_PRODUCED.get_metric_with_label_values(&[meter]).unwrap().get())
-        } else if line.starts_with("1-0:2.8.2") {
-            let curr = (line[10..line.len() - 5].parse::<f64>().unwrap() * 1000.0) as u64;
-            let meter = "2";
-            println!("TOTAL_ENERGY_PRODUCED: {}, meter: {}", curr, meter);
-            TOTAL_ENERGY_PRODUCED.with_label_values(&[meter]).inc_by(curr - TOTAL_ENERGY_PRODUCED.get_metric_with_label_values(&[meter]).unwrap().get())
-        } else if line.starts_with("1-0:1.7.0") {
-            let curr = line[10..line.len() - 4].parse::<f64>().unwrap() * 1000.0;
-            println!("CURRENT_POWER_CONSUMED: {}", curr);
-            CURRENT_POWER_CONSUMED.set(curr as i64);
-        } else if line.starts_with("1-0:2.7.0") {
-            let curr = line[10..line.len() - 4].parse::<f64>().unwrap() * 1000.0;
-            println!("CURRENT_POWER_PRODUCED: {}", curr);
-            CURRENT_POWER_PRODUCED.set(curr as i64);
+    eprintln!("Serial port stream ended; exiting.");
+    Err("serial port stream ended".into())
+}
+
+#[tokio::main]
+async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+    let args: Args = Args::parse();
+
+    let addr = SocketAddr::from(([0, 0, 0, 0], args.port));
+    info!("listening on {addr}");
+
+    let listener = TcpListener::bind(addr).await?;
+
+    // Task that serves HTTP metrics
+    let http_task = tokio::spawn(async move {
+        loop {
+            let (stream, _) = listener.accept().await?;
+
+            let io = TokioIo::new(stream);
+
+            tokio::task::spawn(async move {
+                if let Err(err) = http1::Builder::new()
+                    .serve_connection(io, service_fn(serve_metrics))
+                    .await
+                {
+                    eprintln!("Error serving connection: {:?}", err);
+                }
+            });
+        }
+
+        #[allow(unreachable_code)]
+        Ok::<(), Box<dyn std::error::Error + Send + Sync>>(())
+    });
+
+    // Task that reads from the serial port
+    let serial_task = tokio::spawn(read_serial_port(args.serial_port));
+
+    tokio::select! {
+        res = serial_task => {
+            match res {
+                Ok(Ok(())) => {
+                    eprintln!("Serial task completed unexpectedly; exiting.");
+                    std::process::exit(1);
+                }
+                Ok(Err(e)) => {
+                    eprintln!("Serial task failed: {}", e);
+                    std::process::exit(1);
+                }
+                Err(join_err) => {
+                    eprintln!("Serial task panicked or was cancelled: {}", join_err);
+                    std::process::exit(1);
+                }
+            }
+        }
+        res = http_task => {
+            match res {
+                Ok(Ok(())) => {
+                    eprintln!("HTTP server task completed; exiting.");
+                    std::process::exit(1);
+                }
+                Ok(Err(e)) => {
+                    eprintln!("HTTP server task failed: {}", e);
+                    std::process::exit(1);
+                }
+                Err(join_err) => {
+                    eprintln!("HTTP server task panicked or was cancelled: {}", join_err);
+                    std::process::exit(1);
+                }
+            }
         }
     }
 }
 
-#[tokio::main]
-async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let args: Args = Args::parse();
-
-    tokio::spawn(read_serial_port(args.serial_port));
-
-    // Define the address and create the server
-    let addr = SocketAddr::from(([0, 0, 0, 0], args.port));
-    info!("listening on {addr}");
-
-    // We create a TcpListener and bind it to 127.0.0.1:3000
-    let listener = TcpListener::bind(addr).await?;
-
-    // We start a loop to continuously accept incoming connections
-    loop {
-        let (stream, _) = listener.accept().await?;
-
-        // Use an adapter to access something implementing `tokio::io` traits as if they implement
-        // `hyper::rt` IO traits.
-        let io = TokioIo::new(stream);
-
-        // Spawn a tokio task to serve multiple connections concurrently
-        tokio::task::spawn(async move {
-            // Finally, we bind the incoming connection to our `hello` service
-            if let Err(err) = http1::Builder::new()
-                // `service_fn` converts our function in a `Service`
-                .serve_connection(io, service_fn(serve_metrics))
-                .await
-            {
-                eprintln!("Error serving connection: {:?}", err);
-            }
-        });
-    }
-}
-
-async fn serve_metrics(_: hyper::Request<hyper::body::Incoming>) -> Result<hyper::Response<Full<Bytes>>, Infallible> {
+async fn serve_metrics(
+    _: hyper::Request<hyper::body::Incoming>,
+) -> Result<hyper::Response<Full<Bytes>>, Infallible> {
     let encoder = TextEncoder::new();
     let metric_families = prometheus::gather();
     let mut buffer = Vec::new();
@@ -153,4 +137,3 @@ async fn serve_metrics(_: hyper::Request<hyper::body::Incoming>) -> Result<hyper
 
     Ok(response)
 }
-

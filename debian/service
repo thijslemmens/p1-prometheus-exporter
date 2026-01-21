@@ -1,5 +1,5 @@
 [Unit]
-Description=Kamstrup 162JXC P1 Prometheus exporter
+Description=P1 Prometheus exporter
 After=time-sync.target
 
 [Service]

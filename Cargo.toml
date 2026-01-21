@@ -1,10 +1,10 @@
 [package]
-name = "kamstrup-162jxc-p1-prometheus-exporter-rs"
+name = "p1-prometheus-exporter-rs"
 version = "0.1.0"
 edition = "2021"
-description = "A Prometheus exporter for Kamstrup 162JXC smart electricity meters"
+description = "A Prometheus exporter for P1 smart electricity meters"
 license = "MIT"
-authors = ["Christian Luijten <christian@luijten.org>"]
+authors = ["Christian Luijten <christian@luijten.org>", "Thijs Lemmens"]
 
 [dependencies]
 tokio-serial = "5.4.4"
